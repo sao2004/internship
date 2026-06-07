@@ -11,14 +11,14 @@ Vrem să fie scurt — maxim 1 pagină. Mai mult contează claritatea decât lun
 Pentru fiecare bug, scrie 2-3 propoziții:
 
 ### Bug #1
-- **Unde era:** (fișier + linie aprox)
-- **Cum l-am găsit:** (test care pica? citire de cod? logs?)
-- **Cum l-am fixat:**
+- **Unde era:** In main.py, linia 32.
+- **Cum l-am găsit:** Am observat dupa ce am rulat testele ca apare *FAILED tests/test_app.py::test_create_event_returns_201 - assert 200 == 201*. Asa am identificat bug-ul.
+- **Cum l-am fixat:** Am modificat codul pentru a returna status code 201 în loc de 200.
 
 ### Bug #2
-- **Unde era:**
-- **Cum l-am găsit:**
-- **Cum l-am fixat:**
+- **Unde era:** In storage.py, linia 51.
+- **Cum l-am găsit:** Am rulat testele și am observat că bug-ul apare la list events si are offset de 1 raspunsul, deci aveam hint ca ar fi o problema de indexare.
+- **Cum l-am fixat:** Am modificat codul (am sters acel 1) ca sa inceapa de la 0.
 
 ### Bug #3
 - **Unde era:**
