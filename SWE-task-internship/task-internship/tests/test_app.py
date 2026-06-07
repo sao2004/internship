@@ -146,6 +146,96 @@ def test_delete_same_event_twice_changes_response(client, user):
     assert first_delete.status_code == 204
     assert second_delete.status_code == 404
 
+def test_list_user_events_returns_all_without_since(client, user):
+    """Without a `since` filter, all non-deleted events for the user are returned."""
+    for event_type in ["login", "page_view", "logout"]:
+        client.post(
+            "/events",
+            json={"user_id": user["id"], "event_type": event_type, "metadata": {}},
+        )
+
+    response = client.get(f"/users/{user['id']}/events")
+    assert response.status_code == 200
+    events = response.json()
+    assert len(events) == 3
+    assert all(e["user_id"] == user["id"] for e in events)
+
+
+def test_list_user_events_filters_by_since(client, user):
+    """`since` filter excludes events created at or before the given timestamp."""
+    from datetime import datetime, timezone, timedelta
+
+    # Create two events before the cutoff
+    for _ in range(2):
+        client.post(
+            "/events",
+            json={"user_id": user["id"], "event_type": "click", "metadata": {}},
+        )
+
+    # Record cutoff *after* those events exist
+    cutoff = datetime.now(timezone.utc)
+
+    # Create two events that should appear in the filtered results
+    for _ in range(2):
+        client.post(
+            "/events",
+            json={"user_id": user["id"], "event_type": "purchase", "metadata": {}},
+        )
+
+    response = client.get(
+        f"/users/{user['id']}/events",
+        params={"since": cutoff.isoformat()},
+    )
+    assert response.status_code == 200
+    events = response.json()
+    assert len(events) == 2
+    assert all(e["event_type"] == "purchase" for e in events)
+
+
+def test_list_user_events_unknown_user_returns_404(client):
+    """`GET /users/{user_id}/events` returns 404 for a non-existent user."""
+    response = client.get("/users/9999/events")
+    assert response.status_code == 404
+
+
+def test_list_user_events_excludes_soft_deleted(client, user):
+    """Soft-deleted events are not included in the user event list."""
+    ids = []
+    for _ in range(3):
+        r = client.post(
+            "/events",
+            json={"user_id": user["id"], "event_type": "login", "metadata": {}},
+        )
+        ids.append(r.json()["id"])
+
+    client.delete(f"/events/{ids[0]}")
+
+    response = client.get(f"/users/{user['id']}/events")
+    assert response.status_code == 200
+    returned_ids = {e["id"] for e in response.json()}
+    assert ids[0] not in returned_ids
+    assert len(returned_ids) == 2
+
+
+def test_list_user_events_only_returns_own_events(client, client_fixture=None):
+    """Events from other users are not included."""
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    c = TestClient(app)
+    alice = c.post("/users", json={"email": "a@x.com", "name": "Alice"}).json()
+    bob = c.post("/users", json={"email": "b@x.com", "name": "Bob"}).json()
+
+    c.post("/events", json={"user_id": alice["id"], "event_type": "login", "metadata": {}})
+    c.post("/events", json={"user_id": bob["id"], "event_type": "login", "metadata": {}})
+    c.post("/events", json={"user_id": alice["id"], "event_type": "logout", "metadata": {}})
+
+    response = c.get(f"/users/{alice['id']}/events")
+    assert response.status_code == 200
+    events = response.json()
+    assert len(events) == 2
+    assert all(e["user_id"] == alice["id"] for e in events)
+
 
 def test_pagination_after_delete_stays_consistent(client, user):
     created_ids = []

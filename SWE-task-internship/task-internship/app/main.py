@@ -4,7 +4,7 @@ A small FastAPI service for tracking user activity events.
 """
 
 from fastapi import FastAPI, HTTPException, Query
-
+from datetime import datetime
 from app.models import Event, EventCreate, User, UserCreate
 from app.storage import storage
 
@@ -43,6 +43,16 @@ def list_events(
     limit: int = Query(50, ge=1, le=200),
 ) -> list[Event]:
     return storage.list_events(offset=offset, limit=limit)
+
+@app.get("/users/{user_id}/events", response_model=list[Event])
+def list_user_events(
+    user_id: int,
+    since: datetime | None = Query(None, description="ISO 8601 datetime; return only events newer than this"),
+) -> list[Event]:
+    user = storage.get_user(user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return storage.get_events_for_user(user_id, since=since)
 
 
 @app.delete("/events/{event_id}", status_code=204)
