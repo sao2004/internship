@@ -1,4 +1,4 @@
-# NOTES — [Numele tău]
+# NOTES — Onofrei Ștefan-Alexandru
 
 Copiază acest fișier ca `NOTES.md` și completează-l.
 
