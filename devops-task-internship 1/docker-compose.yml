@@ -1,0 +1,13 @@
+services:
+  web:
+    build: .
+    ports:
+      - "8080:8000"
+    environment:
+      - REDIS_HOST=localhost #redis
+      - REDIS_PORT=6379
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
